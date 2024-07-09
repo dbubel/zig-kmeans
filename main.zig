@@ -9,5 +9,5 @@ pub fn main() !void {
     while (args.next()) |arg| {
         try stdout.print("{s}\n", .{arg});
     }
-    _ = cmd.run();
+    try cmd.run();
 }
