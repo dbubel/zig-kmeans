@@ -1,5 +1,5 @@
 const std = @import("std");
-const cmd = @import("src/cmd/kmeans.zig");
+const kmeans = @import("src/cmd/kmeans.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -9,5 +9,5 @@ pub fn main() !void {
     while (args.next()) |arg| {
         try stdout.print("{s}\n", .{arg});
     }
-    try cmd.run();
+    try kmeans.run();
 }

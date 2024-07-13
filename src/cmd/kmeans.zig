@@ -1,4 +1,5 @@
 const std = @import("std");
+const ls = @import("../lib/lc.zig");
 const print = std.debug.print;
 
 pub fn run() !void {
