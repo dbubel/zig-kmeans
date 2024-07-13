@@ -1,5 +1,4 @@
 const std = @import("std");
-const fs = std.fs;
 const print = std.debug.print;
 
 pub fn run() !void {
@@ -7,38 +6,38 @@ pub fn run() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const file = try fs.cwd().openFile("main.zig", .{});
-    defer file.close();
+    const stdin = std.io.getStdIn();
+    const stdinReader = stdin.reader();
 
-    // Wrap the file reader in a buffered reader.
-    // Since it's usually faster to read a bunch of bytes at once.
-    var buf_reader = std.io.bufferedReader(file.reader());
-    const reader = buf_reader.reader();
+    var buf: [1024]u8 = undefined;
+    var writer = std.io.fixedBufferStream(&buf);
 
-    var line = std.ArrayList(u8).init(allocator);
-    defer line.deinit();
-
-    const writer = line.writer();
-    var line_no: usize = 0;
-    while (reader.streamUntilDelimiter(writer, '\n', null)) {
-        // Clear the line so we can reuse it.
-        defer line.clearRetainingCapacity();
-        line_no += 1;
-        print("{d}--{s}\n", .{ line_no, line.items });
-    } else |err| switch (err) {
-        error.EndOfStream => { // end of file
-            if (line.items.len > 0) {
-                line_no += 1;
-                print("{d}--{s}\n", .{ line_no, line.items });
+    while (true) {
+        defer writer.reset();
+        stdinReader.streamUntilDelimiter(writer.writer(), '\n', null) catch |err| {
+            switch (err) {
+                error.EndOfStream => {
+                    return;
+                },
+                else => {
+                    print("err", .{});
+                    return;
+                },
             }
-        },
-        else => return err, // Propagate error
+        };
+
+        const arr = std.json.parseFromSlice([]f32, allocator, buf[0..writer.pos], .{}) catch |err| {
+            switch (err) {
+                error.UnexpectedEndOfInput => {
+                    return;
+                },
+                else => {
+                    return;
+                },
+            }
+        };
+
+        defer arr.deinit();
+        std.debug.print("{any}\n", .{arr.value});
     }
-
-    print("Total lines: {d}\n", .{line_no});
-}
-
-pub fn openFile(filename: []const u8) !std.fs.File {
-    const file = try std.fs.cwd().openFile(filename, .{});
-    return file;
 }

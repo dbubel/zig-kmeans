@@ -16,6 +16,16 @@ pub fn VectorOps(comptime N: comptime_int, comptime T: type) type {
         pub fn cos_sim(v1: @Vector(N, T), v2: @Vector(N, T)) T {
             return dot(v1, v2) / (mag(v1) * mag(v2));
         }
+
+        pub fn centroid(group: std.ArrayList(@Vector(N, T))) @Vector(N, T) {
+            var n: @Vector(N, T) = undefined;
+            for (group.items) |point| {
+                n += point;
+            }
+
+            const result: @Vector(N, T) = @splat(@floatFromInt(group.items.len));
+            return n / result;
+        }
     };
 }
 
@@ -34,4 +44,11 @@ test "test basic ops 3 dim" {
 
     const cos = vOps3Dimf32.cos_sim(a, a);
     try std.testing.expectEqual(1, cos);
+    const test_allocator = std.testing.allocator;
+
+    var centroids = std.ArrayList(@Vector(3, f32)).init(test_allocator);
+    try centroids.append(a);
+    defer centroids.deinit();
+    const centroid = vOps3Dimf32.centroid(centroids);
+    try std.testing.expectEqual(a, centroid);
 }
