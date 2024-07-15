@@ -6,8 +6,11 @@ pub fn main() !void {
     var args = try std.process.ArgIterator.initWithAllocator(allocator);
 
     const stdout = std.io.getStdOut().writer();
+    var asdf: []const u8 = undefined;
     while (args.next()) |arg| {
         try stdout.print("{s}\n", .{arg});
+        asdf = arg;
     }
-    try kmeans.run();
+    const x = try std.fmt.parseInt(usize, asdf, 10);
+    try kmeans.run(x);
 }

@@ -1,34 +1,46 @@
 const std = @import("std");
 const rand = std.crypto.random;
-const ls = @import("../lib/lc.zig");
 const vops = @import("../lib/vector.zig");
 const print = std.debug.print;
 
-pub fn run() !void {
-    const epsilon: f32 = 0.0001;
-    const K: comptime_int = 2; // number of clusters to build
-    const DIMS = 3;
-    const vOps3Dimf32 = vops.VectorOps(3, f32);
-
+pub fn run(arg: usize) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     var allocator = gpa.allocator();
+
+    // precision to use to determine if the centroids moved
+    // if they move less than epsilon then we are done
+    const epsilon: f32 = 0.0001;
+    const K: usize = arg; // number of clusters to build
+    const DIMS = 3; // dimension of the vectors we are working with
+    const vOps3Dimf32 = vops.VectorOps(DIMS, f32);
+
+    // kmeans_groups is the final data structure that holds the mapping of
+    // centroids to elements.
     var kmeans_groups = LinkedList(@Vector(DIMS, f32)).init(&allocator);
-    var clusters = std.ArrayList(std.ArrayList(@Vector(DIMS, f32))).init(allocator);
-    defer clusters.deinit();
-    var tempCentroids = std.ArrayList(@Vector(DIMS, f32)).init(allocator);
-    defer tempCentroids.deinit();
     defer kmeans_groups.removeAll();
 
+    // clusters is a list of lists for holding centroids -> members of the group
+    var clusters = std.ArrayList(std.ArrayList(@Vector(DIMS, f32))).init(allocator);
+    defer clusters.deinit();
+
+    // we need temp centroids because we made adjustments every time and we have to swap
+    // the newly calculated ones into the best ones
+    // TODO:(dean) this could probably be eliminated
+    var tempCentroids = std.ArrayList(@Vector(DIMS, f32)).init(allocator);
+    defer tempCentroids.deinit();
+
+    // std in reader and wrapper to pipe in vector file
     const stdin = std.io.getStdIn();
     const stdinReader = stdin.reader();
 
+    // buffer and wrapped stream for reading in the vectors from a file
     var buf: [1024]u8 = undefined;
     var writer = std.io.fixedBufferStream(&buf);
 
-    var centroids = std.ArrayList(@Vector(DIMS, f32)).init(allocator);
+    // vector data from file
     var vecData = std.ArrayList(@Vector(DIMS, f32)).init(allocator);
-    defer centroids.deinit();
+
     defer vecData.deinit();
 
     while (true) {
@@ -63,37 +75,40 @@ pub fn run() !void {
         defer arr.deinit();
     }
 
+    var centroids = std.ArrayList(@Vector(DIMS, f32)).init(allocator);
+    defer centroids.deinit();
+
     // pick random points to use as centroids
     for (0..K) |_| {
-        const d = rand.intRangeAtMost(usize, 0, vecData.items.len);
+        const d = rand.intRangeAtMost(usize, 0, vecData.items.len - 1);
         try centroids.append(vecData.items[d]);
     }
+
     // Initialize the arraylists that will contain the vectors for each centroid
     for (0..K) |_| {
         try clusters.append(std.ArrayList(@Vector(DIMS, f32)).init(allocator));
     }
 
-    // for (centroids.items) |item| {
-    //     std.debug.print("{any}\n", .{item});
-    // }
     for (centroids.items) |item| {
         std.debug.print("centroid {any}\n", .{item});
     }
 
+    // max number of iterations for clustering
     for (0..10) |j| {
-        std.debug.print("round ----- {d}\n", .{j});
+        _ = j;
+        // std.debug.print("round ----- {d}\n", .{j});
         for (vecData.items) |vec| {
-            var belongsTo: usize = 0; // the index of the cluster we assign the vector to
+            var clusterIndex: usize = 0; // the index of the cluster we assign the vector to
             var minDist: f32 = std.math.inf(f32);
             for (centroids.items, 0..) |centroid, i| {
                 const dist: f32 = vOps3Dimf32.dist(vec, centroid);
                 if (dist < minDist) {
                     minDist = dist;
-                    belongsTo = i;
+                    clusterIndex = i;
                 }
             }
-            std.debug.print("assigning {any} - {any}\n", .{ belongsTo, vec });
-            try clusters.items[belongsTo].append(vec);
+            // std.debug.print("assigning {any} - {any}\n", .{ clusterIndex, vec });
+            try clusters.items[clusterIndex].append(vec);
         }
 
         for (clusters.items) |cluster| {
@@ -110,18 +125,17 @@ pub fn run() !void {
         }
 
         // if we did not move, then we have good enough centroids
-        // the cleaup and releasing of resources is left up to the
-        // defer statements
+        // we are done
         if (!moved) {
             for (centroids.items, clusters.items) |centroid, clusters_items| {
                 try kmeans_groups.append(centroid, clusters_items);
             }
-
-            return;
+            break;
         }
 
-        // copy over the newly calculated centroids into the main centroids
-        // collection
+        // if we are here then we need to do another iteration
+        // copy over the newly calculated that moved during this iteration
+        // into the main centroids and clear out the temp ones
         centroids.clearRetainingCapacity();
         for (tempCentroids.items) |item| {
             try centroids.append(item);
@@ -134,11 +148,10 @@ pub fn run() !void {
             c.clearRetainingCapacity();
         }
     }
+    // we are done
     kmeans_groups.print();
-
-    // std.debug.print("{d}\n", .{vecData.items[0]});
-    // std.debug.print("{d}\n", .{d});
 }
+
 pub fn LinkedList(comptime T: type) type {
     return struct {
         const This = @This();
