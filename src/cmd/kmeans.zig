@@ -10,9 +10,9 @@ pub fn run(arg: usize) !void {
 
     // precision to use to determine if the centroids moved
     // if they move less than epsilon then we are done
-    const epsilon: f32 = 0.0001;
+    const epsilon: f32 = 0.01;
     const K: usize = arg; // number of clusters to build
-    const DIMS = 3; // dimension of the vectors we are working with
+    const DIMS = 512; // dimension of the vectors we are working with
     const vOps3Dimf32 = vops.VectorOps(DIMS, f32);
 
     // kmeans_groups is the final data structure that holds the mapping of
@@ -35,12 +35,11 @@ pub fn run(arg: usize) !void {
     const stdinReader = stdin.reader();
 
     // buffer and wrapped stream for reading in the vectors from a file
-    var buf: [1024]u8 = undefined;
+    var buf: [1024 * 10]u8 = undefined;
     var writer = std.io.fixedBufferStream(&buf);
 
     // vector data from file
     var vecData = std.ArrayList(@Vector(DIMS, f32)).init(allocator);
-
     defer vecData.deinit();
 
     while (true) {
@@ -78,6 +77,7 @@ pub fn run(arg: usize) !void {
     var centroids = std.ArrayList(@Vector(DIMS, f32)).init(allocator);
     defer centroids.deinit();
 
+    // std.debug.print("{any}\n", .{vecData.items.len});
     // pick random points to use as centroids
     for (0..K) |_| {
         const d = rand.intRangeAtMost(usize, 0, vecData.items.len - 1);
@@ -89,14 +89,9 @@ pub fn run(arg: usize) !void {
         try clusters.append(std.ArrayList(@Vector(DIMS, f32)).init(allocator));
     }
 
-    for (centroids.items) |item| {
-        std.debug.print("centroid {any}\n", .{item});
-    }
-
+    const t = std.time.milliTimestamp();
     // max number of iterations for clustering
-    for (0..10) |j| {
-        _ = j;
-        // std.debug.print("round ----- {d}\n", .{j});
+    while (true) {
         for (vecData.items) |vec| {
             var clusterIndex: usize = 0; // the index of the cluster we assign the vector to
             var minDist: f32 = std.math.inf(f32);
@@ -107,7 +102,6 @@ pub fn run(arg: usize) !void {
                     clusterIndex = i;
                 }
             }
-            // std.debug.print("assigning {any} - {any}\n", .{ clusterIndex, vec });
             try clusters.items[clusterIndex].append(vec);
         }
 
@@ -148,8 +142,10 @@ pub fn run(arg: usize) !void {
             c.clearRetainingCapacity();
         }
     }
+    const end = std.time.milliTimestamp();
+    std.debug.print("kmeans time: {d}ms\n", .{end - t});
     // we are done
-    kmeans_groups.print();
+    // kmeans_groups.print();
 }
 
 pub fn LinkedList(comptime T: type) type {
