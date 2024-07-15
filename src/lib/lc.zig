@@ -12,7 +12,7 @@ fn lc(fp: []const u8) !usize {
 
     while (true) {
         defer writer.reset();
-        reader.streamUntilDelimiter(writer.writer(), '\n', 4096) catch |err| {
+        reader.streamUntilDelimiter(writer.writer(), '\n', 512) catch |err| {
             switch (err) {
                 error.EndOfStream => {
                     break;
