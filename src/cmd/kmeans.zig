@@ -8,10 +8,10 @@ pub fn run(arg: usize) !void {
     defer _ = gpa.deinit();
     var allocator = gpa.allocator();
 
-    var thread_pool: std.Thread.Pool = undefined;
-    try thread_pool.init(.{ .allocator = allocator, .n_jobs = 12 });
-    thread_pool.
-    defer thread_pool.deinit();
+    // var thread_pool: std.Thread.Pool = undefined;
+    // try thread_pool.init(.{ .allocator = allocator, .n_jobs = 12 });
+    // thread_pool.
+    // defer thread_pool.deinit();
 
     // precision to use to determine if the centroids moved
     // if they move less than epsilon then we are done
@@ -205,19 +205,19 @@ pub fn LinkedList(comptime T: type) type {
         }
     };
 }
-fn asdf(centroids: std.ArrayList(@Vector(512, f32))) void {
-            var clusterIndex: usize = 0; // the index of the cluster we assign the vector to
-            var minDist: f32 = std.math.inf(f32);
-            for (centroids.items, 0..) |centroid, i| {
-                const dist: f32 = vOps3Dimf32.dist(vec, centroid);
-                if (dist < minDist) {
-                    minDist = dist;
-                    clusterIndex = i;
-                }
-            }
-            try clusters.items[clusterIndex].append(vec);
-
-}
+// fn asdf(centroids: std.ArrayList(@Vector(512, f32))) void {
+//             var clusterIndex: usize = 0; // the index of the cluster we assign the vector to
+//             var minDist: f32 = std.math.inf(f32);
+//             for (centroids.items, 0..) |centroid, i| {
+//                 const dist: f32 = vOps3Dimf32.dist(vec, centroid);
+//                 if (dist < minDist) {
+//                     minDist = dist;
+//                     clusterIndex = i;
+//                 }
+//             }
+//             try clusters.items[clusterIndex].append(vec);
+//
+// }
 // var thread_pool: std.Thread.Pool = undefined;
 //    try thread_pool.init(.{ .allocator = gpa, .n_jobs = 12 });
 //    defer thread_pool.deinit();
